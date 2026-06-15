@@ -1,0 +1,3785 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus AI - Smart Assistant</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="lib/css/all.min.css">
+    <script src="lib/js/pdf.min.js"></script>
+    <script src="lib/js/tesseract.min.js"></script>
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --bg-primary: #08080f;
+            --bg-secondary: #0f0f1a;
+            --bg-card: #161625;
+            --bg-elevated: #1e1e32;
+            --bg-input: #12121e;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --accent-dark: #d97706;
+            --accent-glow: rgba(245, 158, 11, 0.12);
+            --accent-glow2: rgba(245, 158, 11, 0.25);
+            --text-primary: #f0f0f5;
+            --text-secondary: #9898b0;
+            --text-muted: #55556a;
+            --border: #252540;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --user-bubble: linear-gradient(135deg, #f59e0b, #d97706);
+            --radius: 14px;
+            --radius-sm: 8px;
+            --radius-lg: 20px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f4f4f0;
+            --bg-secondary: #eaeae5;
+            --bg-card: #ffffff;
+            --bg-elevated: #ffffff;
+            --bg-input: #f0f0ec;
+            --accent-glow: rgba(245, 158, 11, 0.08);
+            --accent-glow2: rgba(245, 158, 11, 0.15);
+            --text-primary: #1a1a2e;
+            --text-secondary: #555570;
+            --text-muted: #888898;
+            --border: #d5d5dd;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --user-bubble: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        /* ===== RESET & BASE ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        input,
+        textarea,
+        button {
+            font-family: inherit;
+            outline: none;
+            border: none;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        /* ===== APP CONTAINER ===== */
+        #app {
+            height: 100%;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            background: var(--bg-primary);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .screen.active {
+            display: flex;
+            animation: screenIn 0.35s ease;
+        }
+
+        .screen:not(.active) {
+            display: none !important;
+        }
+
+        @keyframes screenIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== SPLASH SCREEN ===== */
+        #splash-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            z-index: 100;
+        }
+
+        .splash-content {
+            text-align: center;
+        }
+
+        .splash-ring {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            margin: 0 auto 28px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-right-color: var(--accent);
+            animation: spin 1.2s linear infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .splash-ring-inner {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .splash-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            color: var(--text-primary);
+        }
+
+        .splash-title span {
+            color: var(--accent);
+        }
+
+        .splash-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+
+        /* ===== AUTH SCREENS ===== */
+        .auth-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            background: var(--bg-primary);
+        }
+
+        .auth-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+        }
+
+        .auth-logo span {
+            color: var(--accent);
+        }
+
+        .auth-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 32px;
+        }
+
+        .auth-form {
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            z-index: 2;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 14px 14px 42px;
+            border-radius: var(--radius);
+            background: var(--bg-input);
+            border: 1.5px solid var(--border);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+            background: var(--bg-card);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--user-bubble);
+            color: #0a0a0f;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .auth-switch {
+            margin-top: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .auth-switch a {
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .auth-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            margin-bottom: 14px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .auth-error.show {
+            display: flex;
+        }
+
+        /* ===== MAIN APP LAYOUT ===== */
+        #main-app {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        #main-app.active {
+            display: flex;
+        }
+
+        .main-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            min-height: 58px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .main-header h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .main-header h1 span {
+            color: var(--accent);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .main-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .content-screen {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+        }
+
+        .content-screen.active {
+            display: flex;
+        }
+
+        /* ===== BOTTOM NAV ===== */
+        .bottom-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 8px 0 12px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            min-height: 60px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .nav-item i {
+            font-size: 18px;
+            transition: var(--transition);
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-item.active i {
+            transform: scale(1.1);
+        }
+
+        .nav-item:hover {
+            color: var(--accent-light);
+        }
+
+        /* ===== CHAT SCREEN ===== */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-welcome {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .chat-welcome-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: var(--accent);
+        }
+
+        .chat-welcome h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .chat-welcome p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .suggestion-chip {
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 8px;
+            max-width: 88%;
+            animation: msgIn 0.3s ease;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        @keyframes msgIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .msg-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .message.assistant .msg-avatar {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+
+        .message.user .msg-avatar {
+            background: var(--accent);
+            color: #0a0a0f;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .msg-bubble {
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            font-size: 13.5px;
+            line-height: 1.6;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.user .msg-bubble {
+            background: var(--user-bubble);
+            color: #0a0a0f;
+            font-weight: 500;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .msg-bubble {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .msg-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .msg-action-btn {
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .msg-action-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+
+        .typing-indicator span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingBounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+
+            30% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+
+        /* Chat Input */
+        .chat-input-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input-bar textarea {
+            flex: 1;
+            resize: none;
+            padding: 10px 14px;
+            border-radius: 22px;
+            background: var(--bg-input);
+            border: 1.5px solid var(--border);
+            color: var(--text-primary);
+            font-size: 14px;
+            max-height: 100px;
+            min-height: 42px;
+            line-height: 1.4;
+            transition: var(--transition);
+        }
+
+        .chat-input-bar textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .chat-input-bar textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-action-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+            font-size: 16px;
+        }
+
+        .mic-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .mic-btn:hover,
+        .mic-btn.recording {
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        .mic-btn.recording {
+            animation: pulse 1s infinite;
+        }
+
+        .send-btn {
+            background: var(--accent);
+            color: #0a0a0f;
+            font-weight: 700;
+        }
+
+        .send-btn:hover {
+            background: var(--accent-light);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+            }
+        }
+
+        /* ===== TOOLS SCREEN ===== */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            padding-bottom: 20px;
+        }
+
+        .tool-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: var(--accent-glow);
+            transition: var(--transition);
+        }
+
+        .tool-card:hover::before {
+            opacity: 1;
+        }
+
+        .tool-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .tool-card-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            margin: 0 auto 12px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--accent);
+            position: relative;
+        }
+
+        .tool-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .tool-card p {
+            font-size: 11px;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        /* ===== HISTORY SCREEN ===== */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+        }
+
+        .search-bar i {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: none;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .history-item:hover {
+            border-color: var(--accent);
+        }
+
+        .history-item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .history-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .history-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .history-item-delete {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .history-item-delete:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* ===== PDF SCREEN ===== */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 16px;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .upload-zone.has-file {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .upload-zone i {
+            font-size: 36px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .upload-zone p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .upload-zone small {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .pdf-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .pdf-action-btn {
+            padding: 12px;
+            border-radius: var(--radius);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .pdf-action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .pdf-action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .result-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+        }
+
+        .pdf-question-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .pdf-question-bar input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            background: var(--bg-input);
+            border: 1.5px solid var(--border);
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .pdf-question-bar input:focus {
+            border-color: var(--accent);
+        }
+
+        .pdf-question-bar button {
+            padding: 10px 16px;
+            border-radius: var(--radius);
+            background: var(--accent);
+            color: #0a0a0f;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* ===== IMAGE SCREEN ===== */
+        .image-preview {
+            width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .image-preview.show {
+            display: block;
+        }
+
+        /* ===== TRANSLATE SCREEN ===== */
+        .lang-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .lang-select {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .lang-select:focus {
+            border-color: var(--accent);
+        }
+
+        .swap-lang-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .swap-lang-btn:hover {
+            background: var(--accent);
+            color: #0a0a0f;
+        }
+
+        .translate-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 14px;
+            border-radius: var(--radius);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .translate-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .translate-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .translate-result {
+            width: 100%;
+            min-height: 120px;
+            padding: 14px;
+            border-radius: var(--radius);
+            background: var(--accent-glow);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        /* ===== PROFILE SCREEN ===== */
+        .profile-header {
+            text-align: center;
+            padding: 20px 0 24px;
+        }
+
+        .profile-photo-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 14px;
+        }
+
+        .profile-photo {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent);
+            padding: 2px;
+            background: var(--bg-card);
+        }
+
+        .profile-photo-edit {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #0a0a0f;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid var(--bg-primary);
+        }
+
+        .profile-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .profile-email {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+
+        .stat-card {
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-card .stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .profile-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 14px;
+            overflow: hidden;
+        }
+
+        .profile-section-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .profile-section-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-section-item:hover {
+            background: var(--accent-glow);
+        }
+
+        .profile-section-item i {
+            width: 20px;
+            text-align: center;
+            color: var(--accent);
+            font-size: 15px;
+        }
+
+        .profile-section-item span {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .profile-section-item .chevron {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* ===== SETTINGS SCREEN ===== */
+        .settings-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .settings-item-left i {
+            width: 20px;
+            text-align: center;
+            color: var(--accent);
+        }
+
+        .settings-item-left span {
+            font-size: 13px;
+        }
+
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: var(--border);
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        /* ===== BACK HEADER ===== */
+        .back-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .back-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .back-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* ===== TOAST ===== */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+            box-shadow: var(--shadow);
+        }
+
+        .toast.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .toast.info {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(-12px);
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateY(-12px);
+            }
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 340px;
+            width: 100%;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+        }
+
+        .modal h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .modal p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 8px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-btn.cancel {
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .modal-btn.confirm {
+            background: var(--accent);
+            color: #0a0a0f;
+        }
+
+        .modal-btn.danger {
+            background: var(--error);
+            color: white;
+        }
+
+        /* ===== LOADING OVERLAY ===== */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 8, 15, 0.8);
+            z-index: 900;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loading-overlay p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ===== EDIT NAME MODAL ===== */
+        .edit-name-input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            background: var(--bg-input);
+            border: 1.5px solid var(--border);
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .edit-name-input:focus {
+            border-color: var(--accent);
+        }
+
+        /* ===== ABOUT / PRIVACY ===== */
+        .info-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .info-content h3 {
+            color: var(--text-primary);
+            font-size: 15px;
+            margin: 16px 0 8px;
+        }
+
+        .info-content h3:first-child {
+            margin-top: 0;
+        }
+
+        /* ===== ENHANCED ABOUT SCREEN ===== */
+        .about-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 4px 0;
+        }
+        .about-logo-wrapper {
+            text-align: center;
+            padding: 20px 16px;
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(245,158,11,0.02) 100%);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 4px;
+        }
+        .about-logo-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+        .about-logo-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .about-logo-title span {
+            color: var(--accent);
+        }
+        .about-version-tag {
+            font-size: 10px;
+            color: var(--accent);
+            background: rgba(245, 158, 11, 0.08);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .about-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+        .about-desc {
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        .about-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .about-section-title i {
+            color: var(--accent);
+        }
+        .about-features-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            transition: var(--transition);
+        }
+        .feature-item:hover {
+            border-color: var(--accent);
+            background: var(--bg-elevated);
+        }
+        .feature-item i {
+            font-size: 16px;
+            color: var(--accent);
+            margin-top: 2px;
+            width: 20px;
+            text-align: center;
+        }
+        .feature-item h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .feature-item p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.4;
+        }
+        .about-developer-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(245,158,11,0.03) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+        .dev-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--user-bubble);
+            color: #0a0a0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 1px;
+        }
+        .dev-details {
+            display: flex;
+            flex-direction: column;
+        }
+        .dev-role {
+            font-size: 9px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .dev-name {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        /* ===== UTILITY ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .gap-8 {
+            gap: 8px;
+        }
+
+        .mt-12 {
+            margin-top: 12px;
+        }
+
+        .mb-12 {
+            margin-bottom: 12px;
+        }
+
+        .text-accent {
+            color: var(--accent);
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .fw-600 {
+            font-weight: 600;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .chat-file-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--accent);
+            margin: 0 16px 8px;
+            align-self: flex-start;
+            animation: msgIn 0.2s ease;
+        }
+
+        .chat-file-preview button {
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-file-preview button:hover {
+            color: var(--error);
+        }
+
+        /* ===== OFFLINE OVERLAY ===== */
+        .offline-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 8, 15, 0.96);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .offline-overlay.show {
+            display: flex;
+        }
+
+        .offline-icon {
+            font-size: 56px;
+            color: var(--error);
+            animation: pulse 1.5s infinite;
+        }
+
+        .offline-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .offline-text {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            max-width: 300px;
+            line-height: 1.6;
+        }
+
+        .offline-btn {
+            padding: 12px 28px;
+            border-radius: var(--radius);
+            background: var(--accent);
+            color: #0a0a0f;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .offline-btn:hover {
+            background: var(--accent-light);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (min-width: 481px) {
+            #app {
+                border-left: 1px solid var(--border);
+                border-right: 1px solid var(--border);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app">
+        <!-- ===== SPLASH SCREEN ===== -->
+        <div id="splash-screen" class="screen active">
+            <div class="splash-content">
+                <div class="splash-ring">
+                    <div class="splash-ring-inner">AI</div>
+                </div>
+                <div class="splash-title">NEXU<span>S</span></div>
+                <div class="splash-sub">Smart Assistant</div>
+            </div>
+        </div>
+
+        <!-- ===== LOGIN SCREEN ===== -->
+        <div id="login-screen" class="screen auth-screen">
+            <div class="auth-logo">NEXU<span>S</span></div>
+            <div class="auth-subtitle">Welcome back! Sign in to continue</div>
+            <div id="login-error" class="auth-error"><i class="fas fa-exclamation-circle"></i><span></span></div>
+            <div class="auth-form">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="login-email" placeholder="Email address" autocomplete="email">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button class="btn-primary" onclick="handleLogin()">Sign In</button>
+                <div class="auth-switch">Don't have an account? <a onclick="showScreen('signup-screen')">Sign Up</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SIGNUP SCREEN ===== -->
+        <div id="signup-screen" class="screen auth-screen">
+            <div class="auth-logo">NEXU<span>S</span></div>
+            <div class="auth-subtitle">Create your account</div>
+            <div id="signup-error" class="auth-error"><i class="fas fa-exclamation-circle"></i><span></span></div>
+            <div class="auth-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="signup-name" placeholder="Full name">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="signup-email" placeholder="Email address" autocomplete="email">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signup-password" placeholder="Password (min 6 chars)">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-shield-halved"></i>
+                    <input type="password" id="signup-confirm" placeholder="Confirm password">
+                </div>
+                <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+                <div class="auth-switch">Already have an account? <a onclick="showScreen('login-screen')">Sign In</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MAIN APP ===== -->
+        <div id="main-app">
+            <!-- Header -->
+            <div class="main-header">
+                <h1>NEXU<span>S</span> AI</h1>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="showContentScreen('content-settings')" title="Settings"><i
+                            class="fas fa-gear"></i></button>
+                    <button class="icon-btn" onclick="clearCurrentChat()" title="Clear Chat"><i
+                            class="fas fa-broom"></i></button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="main-content">
+                <!-- Chat Screen -->
+                <div id="content-chat" class="content-screen active">
+                    <div id="chat-messages" class="chat-messages">
+                        <div id="chat-welcome" class="chat-welcome">
+                            <div class="chat-welcome-icon"><i class="fas fa-bolt"></i></div>
+                            <h2>How can I help you?</h2>
+                            <p>I'm Nexus AI, your smart assistant. Ask me anything!</p>
+                            <div class="suggestions">
+                                <div class="suggestion-chip" onclick="useSuggestion('Tell me a joke')">Tell me a joke
+                                </div>
+                                <div class="suggestion-chip" onclick="useSuggestion('What can you do?')">What can you
+                                    do?</div>
+                                <div class="suggestion-chip" onclick="useSuggestion('Calculate 25 * 48 + 137')">Math
+                                    help</div>
+                                <div class="suggestion-chip" onclick="useSuggestion('Tell me an interesting fact')">Fun
+                                    fact</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tools Screen -->
+                <div id="content-tools" class="content-screen">
+                    <div class="tools-grid">
+                        <div class="tool-card" onclick="showContentScreen('content-pdf')">
+                            <div class="tool-card-icon"><i class="fas fa-file-pdf"></i></div>
+                            <h3>PDF Assistant</h3>
+                            <p>Summarize & extract</p>
+                        </div>
+                        <div class="tool-card" onclick="showContentScreen('content-image')">
+                            <div class="tool-card-icon"><i class="fas fa-image"></i></div>
+                            <h3>Image Analysis</h3>
+                            <p>OCR & describe</p>
+                        </div>
+                        <div class="tool-card" onclick="showContentScreen('content-translate')">
+                            <div class="tool-card-icon"><i class="fas fa-language"></i></div>
+                            <h3>Translation</h3>
+                            <p>Hindi & English</p>
+                        </div>
+                        <div class="tool-card" onclick="showContentScreen('content-history')">
+                            <div class="tool-card-icon"><i class="fas fa-clock-rotate-left"></i></div>
+                            <h3>Chat History</h3>
+                            <p>Past conversations</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Screen -->
+                <div id="content-history" class="content-screen">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="history-search" placeholder="Search conversations..."
+                            oninput="renderHistory()">
+                    </div>
+                    <div id="history-list"></div>
+                </div>
+
+                <!-- Profile Screen -->
+                <div id="content-profile" class="content-screen">
+                    <div class="profile-header">
+                        <div class="profile-photo-wrapper">
+                            <img id="profile-photo" class="profile-photo" src="" alt="Profile">
+                            <label for="photo-upload" class="profile-photo-edit"><i class="fas fa-camera"></i></label>
+                            <input type="file" id="photo-upload" accept="image/*" class="hidden"
+                                onchange="handlePhotoUpload(event)">
+                        </div>
+                        <div id="profile-name" class="profile-name"></div>
+                        <div id="profile-email" class="profile-email"></div>
+                        <div class="profile-stats">
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-chats">0</div>
+                                <div class="stat-label">Chats</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-messages">0</div>
+                                <div class="stat-label">Messages</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-section">
+                        <div class="profile-section-item" onclick="editName()">
+                            <i class="fas fa-pen"></i><span>Edit Name</span><i class="fas fa-chevron-right chevron"></i>
+                        </div>
+                        <div class="profile-section-item" onclick="showContentScreen('content-settings')">
+                            <i class="fas fa-gear"></i><span>Settings</span><i class="fas fa-chevron-right chevron"></i>
+                        </div>
+                        <div class="profile-section-item" onclick="showContentScreen('content-about')">
+                            <i class="fas fa-circle-info"></i><span>About App</span><i
+                                class="fas fa-chevron-right chevron"></i>
+                        </div>
+                        <div class="profile-section-item" onclick="showContentScreen('content-privacy')">
+                            <i class="fas fa-shield-halved"></i><span>Privacy Policy</span><i
+                                class="fas fa-chevron-right chevron"></i>
+                        </div>
+                        <div class="profile-section-item" onclick="handleLogout()" style="color:var(--error)">
+                            <i class="fas fa-right-from-bracket" style="color:var(--error)"></i><span>Logout</span><i
+                                class="fas fa-chevron-right chevron"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF Screen -->
+                <div id="content-pdf" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-tools')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>PDF Assistant</h2>
+                    </div>
+                    <div id="pdf-upload-zone" class="upload-zone"
+                        onclick="document.getElementById('pdf-file-input').click()">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                        <p>Tap to upload a PDF file</p>
+                        <small>Supports .pdf files</small>
+                    </div>
+                    <input type="file" id="pdf-file-input" accept=".pdf" class="hidden"
+                        onchange="handlePDFUpload(event)">
+                    <div id="pdf-actions" class="pdf-actions hidden">
+                        <button class="pdf-action-btn" onclick="pdfSummarize()"><i class="fas fa-compress"></i>
+                            Summary</button>
+                        <button class="pdf-action-btn" onclick="pdfKeyPoints()"><i class="fas fa-list"></i> Key
+                            Points</button>
+                        <button class="pdf-action-btn" onclick="pdfFullText()"><i class="fas fa-align-left"></i> Full
+                            Text</button>
+                        <button class="pdf-action-btn" onclick="document.getElementById('pdf-file-input').click()"><i
+                                class="fas fa-rotate"></i> New PDF</button>
+                    </div>
+                    <div id="pdf-result" class="result-box hidden"></div>
+                    <div id="pdf-question-section" class="hidden">
+                        <div class="pdf-question-bar">
+                            <input type="text" id="pdf-question-input" placeholder="Ask about this PDF...">
+                            <button onclick="pdfAskQuestion()">Ask</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Screen -->
+                <div id="content-image" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-tools')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>Image Analysis</h2>
+                    </div>
+                    <div id="image-upload-zone" class="upload-zone"
+                        onclick="document.getElementById('image-file-input').click()">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                        <p>Tap to upload an image</p>
+                        <small>JPG, PNG, WEBP supported</small>
+                    </div>
+                    <input type="file" id="image-file-input" accept="image/*" class="hidden"
+                        onchange="handleImageUpload(event)">
+                    <img id="image-preview" class="image-preview" alt="Preview">
+                    <div id="image-actions" class="pdf-actions hidden">
+                        <button class="pdf-action-btn" onclick="imageDescribe()"><i class="fas fa-comment-dots"></i>
+                            Describe</button>
+                        <button class="pdf-action-btn" onclick="imageOCR()"><i class="fas fa-font"></i> Extract
+                            Text</button>
+                        <button class="pdf-action-btn" onclick="imageAnalyze()"><i class="fas fa-magnifying-glass"></i>
+                            Analyze</button>
+                        <button class="pdf-action-btn" onclick="document.getElementById('image-file-input').click()"><i
+                                class="fas fa-rotate"></i> New Image</button>
+                    </div>
+                    <div id="image-result" class="result-box hidden"></div>
+                </div>
+
+                <!-- Translate Screen -->
+                <div id="content-translate" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-tools')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>Translation</h2>
+                    </div>
+                    <div class="lang-selector">
+                        <select id="lang-from" class="lang-select">
+                            <option value="auto">Auto Detect</option>
+                            <option value="en">English</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                        <button class="swap-lang-btn" onclick="swapLanguages()"><i
+                                class="fas fa-arrows-rotate"></i></button>
+                        <select id="lang-to" class="lang-select">
+                            <option value="hi">Hindi</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <textarea id="translate-input" class="translate-textarea"
+                        placeholder="Enter text to translate..."></textarea>
+                    <button class="btn-primary mb-12" onclick="handleTranslate()"><i class="fas fa-language"></i>
+                        Translate</button>
+                    <div id="translate-result" class="translate-result hidden"></div>
+                    <div id="translate-actions" class="hidden" style="display:flex;gap:8px">
+                        <button class="pdf-action-btn" style="flex:1" onclick="copyTranslation()"><i
+                                class="fas fa-copy"></i> Copy</button>
+                        <button class="pdf-action-btn" style="flex:1" onclick="speakTranslation()"><i
+                                class="fas fa-volume-high"></i> Listen</button>
+                    </div>
+                </div>
+
+                <!-- Settings Screen -->
+                <div id="content-settings" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-chat')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>Settings</h2>
+                    </div>
+                    <div class="settings-group">
+                        <div class="settings-item">
+                            <div class="settings-item-left"><i class="fas fa-moon"></i><span>Dark Mode</span></div>
+                            <div id="dark-mode-toggle" class="toggle-switch active" onclick="toggleDarkMode()"></div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-left"><i class="fas fa-volume-high"></i><span>Auto Read
+                                    Responses</span></div>
+                            <div id="auto-read-toggle" class="toggle-switch" onclick="toggleAutoRead()"></div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <div class="settings-item" onclick="showContentScreen('content-about')" style="cursor:pointer">
+                            <div class="settings-item-left"><i class="fas fa-circle-info"></i><span>About App</span>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+                        </div>
+                        <div class="settings-item" onclick="showContentScreen('content-privacy')"
+                            style="cursor:pointer">
+                            <div class="settings-item-left"><i class="fas fa-shield-halved"></i><span>Privacy
+                                    Policy</span></div>
+                            <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <div class="settings-item">
+                            <div class="settings-item-left"><i class="fas fa-database"></i><span>Clear All Data</span>
+                            </div>
+                            <button
+                                style="padding:6px 14px;border-radius:8px;background:rgba(239,68,68,0.15);color:var(--error);font-size:12px;font-weight:600;cursor:pointer"
+                                onclick="clearAllData()">Clear</button>
+                        </div>
+                    </div>
+                    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:20px">Nexus AI v1.0.0
+                    </p>
+                </div>
+
+                <!-- About Screen -->
+                <div id="content-about" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-settings')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>About</h2>
+                    </div>
+                    <div class="about-container">
+                        <div class="about-logo-wrapper">
+                            <div class="about-logo-icon"><i class="fas fa-bolt"></i></div>
+                            <div class="about-logo-title">NEXU<span>S</span> AI</div>
+                            <span class="about-version-tag">Version 1.0.0</span>
+                        </div>
+                        
+                        <div class="about-card">
+                            <p class="about-desc">Nexus AI is a premium, all-in-one smart assistant powered by high-speed neural network models. It features advanced multi-turn chat, PDF summary & Q&A assistant, optical character recognition (OCR) tool, real-time English/Hindi translation, and voice interface controls.</p>
+                        </div>
+                        
+                        <div class="about-section-title"><i class="fas fa-cubes"></i> Core Capabilities</div>
+                        <div class="about-features-grid">
+                            <div class="feature-item">
+                                <i class="fas fa-message"></i>
+                                <div>
+                                    <h4>Smart AI Chat</h4>
+                                    <p>Context-aware multimodal conversation interface</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-file-pdf"></i>
+                                <div>
+                                    <h4>PDF Assistant</h4>
+                                    <p>Summarize pages, extract key points & query PDFs</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-image"></i>
+                                <div>
+                                    <h4>Image Intelligence</h4>
+                                    <p>Deep visual content analysis & OCR text extractor</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-language"></i>
+                                <div>
+                                    <h4>Bilingual Translation</h4>
+                                    <p>Quick English and Hindi translation interface</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-microphone"></i>
+                                <div>
+                                    <h4>Voice Synthesis</h4>
+                                    <p>Speech recognition inputs and text-to-speech reading</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="about-section-title"><i class="fas fa-code"></i> Developer Profile</div>
+                        <div class="about-developer-card">
+                            <div class="dev-avatar">AP</div>
+                            <div class="dev-details">
+                                <span class="dev-role">Lead Developer</span>
+                                <h4 class="dev-name">Archit prajapati</h4>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 12px; text-align: center; font-size: 11px; color: var(--text-muted);">
+                            Developed by <span style="color: var(--accent); font-weight: 600;">Archit prajapati</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Privacy Screen -->
+                <div id="content-privacy" class="content-screen">
+                    <div class="back-header">
+                        <button class="back-btn" onclick="showContentScreen('content-settings')"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2>Privacy Policy</h2>
+                    </div>
+                    <div class="info-content">
+                        <h3>Data Storage</h3>
+                        <p>All your data is stored locally on your device. We do not send your personal information to
+                            any external servers for storage.</p>
+                        <h3>Authentication</h3>
+                        <p>Your password is securely hashed before storage. Authentication tokens are used to keep your
+                            session secure.</p>
+                        <h3>Chat History</h3>
+                        <p>Chat conversations are stored locally on your device. You can delete any conversation at any
+                            time from the Chat History section.</p>
+                        <h3>Voice Data</h3>
+                        <p>Voice input is processed using your device's built-in speech recognition. Audio is not stored
+                            or transmitted to our servers.</p>
+                        <h3>Third-Party Services</h3>
+                        <p>Translation uses the MyMemory API. PDF and image processing happens entirely in your browser.
+                            No files are uploaded to external servers.</p>
+                        <h3>Contact</h3>
+                        <p>For any privacy concerns, please contact us through the app settings.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Preview -->
+            <div id="chat-file-preview" class="chat-file-preview hidden">
+                <span id="chat-file-preview-name"></span>
+                <button onclick="removeChatAttachedFile()"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Chat Input Bar -->
+            <div id="chat-input-bar" class="chat-input-bar">
+                <button class="input-action-btn mic-btn" id="mic-btn" onclick="toggleVoiceInput()"
+                    title="Voice Input"><i class="fas fa-microphone"></i></button>
+                <button class="input-action-btn mic-btn" id="chat-attach-btn"
+                    onclick="document.getElementById('chat-file-input').click()" title="Attach PDF or Image"><i
+                        class="fas fa-paperclip"></i></button>
+                <input type="file" id="chat-file-input"
+                    accept="image/*,.pdf,.txt,.js,.py,.html,.css,.json,.csv,.ts,.c,.cpp,.java,.md" class="hidden"
+                    onchange="handleChatFileUpload(event)">
+                <textarea id="chat-input" rows="1" placeholder="Type your message..." oninput="autoResizeInput(this)"
+                    onkeydown="handleInputKeydown(event)"></textarea>
+                <button class="input-action-btn send-btn" id="send-btn" onclick="sendMessage()" title="Send"><i
+                        class="fas fa-paper-plane"></i></button>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <div class="nav-item active" data-screen="content-chat" onclick="switchTab(this)">
+                    <i class="fas fa-message"></i><span>Chat</span>
+                </div>
+                <div class="nav-item" data-screen="content-tools" onclick="switchTab(this)">
+                    <i class="fas fa-screwdriver-wrench"></i><span>Tools</span>
+                </div>
+                <div class="nav-item" data-screen="content-history" onclick="switchTab(this)">
+                    <i class="fas fa-clock-rotate-left"></i><span>History</span>
+                </div>
+                <div class="nav-item" data-screen="content-profile" onclick="switchTab(this)">
+                    <i class="fas fa-user"></i><span>Profile</span>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Offline Overlay -->
+    <div id="offline-overlay" class="offline-overlay">
+        <i class="fas fa-wifi offline-icon"></i>
+        <div class="offline-title">No Internet Connection</div>
+        <div class="offline-text">Nexus AI requires an active internet connection to communicate and process requests.
+            Please check your network connection and retry.</div>
+        <button class="offline-btn" onclick="checkNetworkConnection()">Retry Connection</button>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p id="loading-text">Processing...</p>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title"></h3>
+            <p id="modal-message"></p>
+            <div id="modal-extra"></div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn confirm" id="modal-confirm-btn"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ===== GEMINI API CONFIGURATION ===== */
+        const GEMINI_API_KEY = "AQ.Ab8RN6Ix_VcgYAjputOGzm9eW3bnN8K7OLr_qWOvwEI2G-d7fA";
+
+        /* ===== PDF.js Worker Setup ===== */
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/js/pdf.worker.min.js';
+        }
+
+        /* ===== SAFE STORAGE WRAPPER ===== */
+        const SafeStorage = {
+            getItem(key) {
+                try {
+                    return window.localStorage.getItem(key);
+                } catch (e) {
+                    console.warn('SafeStorage.getItem failed:', e);
+                    return this[key] || null;
+                }
+            },
+            setItem(key, value) {
+                try {
+                    window.localStorage.setItem(key, value);
+                } catch (e) {
+                    console.warn('SafeStorage.setItem failed:', e);
+                    this[key] = String(value);
+                }
+            },
+            removeItem(key) {
+                try {
+                    window.localStorage.removeItem(key);
+                } catch (e) {
+                    console.warn('SafeStorage.removeItem failed:', e);
+                    delete this[key];
+                }
+            },
+            clear() {
+                try {
+                    window.localStorage.clear();
+                } catch (e) {
+                    console.warn('SafeStorage.clear failed:', e);
+                    for (const key in this) {
+                        if (typeof this[key] === 'string') delete this[key];
+                    }
+                }
+            }
+        };
+
+
+        /* ===== STATE MANAGEMENT ===== */
+        const State = {
+            currentUser: null,
+            currentChatId: null,
+            currentMessages: [],
+            pdfText: '',
+            imageText: '',
+            chatAttachedText: '',
+            chatAttachedImage: '',
+            chatAttachedFileName: '',
+            isRecording: false,
+            autoRead: false,
+            speechSynth: window.speechSynthesis,
+            recognition: null
+        };
+
+        /* ===== UTILITY FUNCTIONS ===== */
+        function $(id) { return document.getElementById(id); }
+        function uuid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
+        async function hashPassword(pw) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(pw);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        /* ===== JWT AUTHENTICATION ===== */
+        function generateJWT(payload) {
+            const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+            const body = btoa(JSON.stringify(payload));
+            const signature = btoa(header + "." + body + ".nexus_secret_key");
+            return `${header}.${body}.${signature}`;
+        }
+
+        function verifyJWT(token) {
+            if (!token) return null;
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            try {
+                const payload = JSON.parse(atob(parts[1]));
+                if (payload.exp && Date.now() > payload.exp) return null;
+                return payload;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function getAuthenticatedUserId() {
+            const token = SafeStorage.getItem('nexus_token') || SafeStorage.getItem('nova_token');
+            const decoded = verifyJWT(token);
+            if (!decoded) {
+                State.currentUser = null;
+                SafeStorage.removeItem('nexus_token');
+                SafeStorage.removeItem('nova_token');
+                showScreen('login-screen');
+                return null;
+            }
+            return decoded.userId;
+        }
+
+        function getUsers() { return JSON.parse(SafeStorage.getItem('nexus_users') || SafeStorage.getItem('nova_users') || '[]'); }
+        function saveUsers(users) { SafeStorage.setItem('nexus_users', JSON.stringify(users)); }
+
+        function getChats() {
+            const userId = getAuthenticatedUserId();
+            if (!userId) return [];
+            const allChats = JSON.parse(SafeStorage.getItem('nexus_chats') || SafeStorage.getItem('nova_chats') || '[]');
+            return allChats.filter(c => c.userId === userId);
+        }
+
+        function saveChats(chats) {
+            const userId = getAuthenticatedUserId();
+            if (!userId) return;
+            const allChats = JSON.parse(SafeStorage.getItem('nexus_chats') || SafeStorage.getItem('nova_chats') || '[]');
+            const otherChats = allChats.filter(c => c.userId !== userId);
+            const updatedChats = [...otherChats, ...chats];
+            SafeStorage.setItem('nexus_chats', JSON.stringify(updatedChats));
+        }
+        function showToast(msg, type = 'info') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
+            t.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+            $('toast-container').appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+        function showLoading(text = 'Processing...') { $('loading-text').textContent = text; $('loading-overlay').classList.add('show'); }
+        function hideLoading() { $('loading-overlay').classList.remove('show'); }
+        function showModal(title, message, confirmText, onConfirm, isDanger = false) {
+            $('modal-title').textContent = title;
+            $('modal-message').textContent = message;
+            $('modal-extra').innerHTML = '';
+            const btn = $('modal-confirm-btn');
+            btn.textContent = confirmText;
+            btn.className = `modal-btn ${isDanger ? 'danger' : 'confirm'}`;
+            btn.onclick = () => { closeModal(); onConfirm(); };
+            $('modal-overlay').classList.add('show');
+        }
+        function closeModal() { $('modal-overlay').classList.remove('show'); }
+
+        /* ===== SCREEN NAVIGATION ===== */
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            $(screenId).classList.add('active');
+        }
+
+        function showContentScreen(screenId) {
+            document.querySelectorAll('.content-screen').forEach(s => s.classList.remove('active'));
+            $(screenId).classList.add('active');
+            // Chat input bar and bottom nav visibility
+            const isChatScreen = screenId === 'content-chat';
+            $('chat-input-bar').style.display = isChatScreen ? 'flex' : 'none';
+            document.querySelector('.bottom-nav').style.display = isChatScreen || screenId === 'content-tools' || screenId === 'content-history' || screenId === 'content-profile' ? 'flex' : 'none';
+            // Update nav active state
+            const navMap = { 'content-chat': 0, 'content-tools': 1, 'content-history': 2, 'content-profile': 3 };
+            document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === (navMap[screenId] ?? -1)));
+            // Render data
+            if (screenId === 'content-history') renderHistory();
+            if (screenId === 'content-profile') renderProfile();
+            if (screenId === 'content-settings') renderSettings();
+        }
+
+        function switchTab(el) {
+            const screenId = el.dataset.screen;
+            showContentScreen(screenId);
+        }
+
+        /* ===== AUTHENTICATION ===== */
+        async function handleLogin() {
+            const email = $('login-email').value.trim();
+            const password = $('login-password').value;
+            const errEl = $('login-error');
+            if (!email || !password) { errEl.querySelector('span').textContent = 'Please fill in all fields'; errEl.classList.add('show'); return; }
+            const users = getUsers();
+            const user = users.find(u => u.email === email);
+            const hashed = await hashPassword(password);
+            if (!user || user.password !== hashed) { errEl.querySelector('span').textContent = 'Invalid email or password'; errEl.classList.add('show'); return; }
+            errEl.classList.remove('show');
+            State.currentUser = user;
+
+            // Generate JWT
+            const token = generateJWT({ userId: user.id, email: user.email, exp: Date.now() + 86400000 });
+            SafeStorage.setItem('nexus_token', token);
+
+            enterApp();
+        }
+
+        async function handleSignup() {
+            const name = $('signup-name').value.trim();
+            const email = $('signup-email').value.trim();
+            const password = $('signup-password').value;
+            const confirm = $('signup-confirm').value;
+            const errEl = $('signup-error');
+            if (!name || !email || !password || !confirm) { errEl.querySelector('span').textContent = 'Please fill in all fields'; errEl.classList.add('show'); return; }
+            if (password.length < 6) { errEl.querySelector('span').textContent = 'Password must be at least 6 characters'; errEl.classList.add('show'); return; }
+            if (password !== confirm) { errEl.querySelector('span').textContent = 'Passwords do not match'; errEl.classList.add('show'); return; }
+            const users = getUsers();
+            if (users.find(u => u.email === email)) { errEl.querySelector('span').textContent = 'Email already registered'; errEl.classList.add('show'); return; }
+            errEl.classList.remove('show');
+
+            const hashed = await hashPassword(password);
+            const newUser = { id: uuid(), name, email, password: hashed, photo: '', createdAt: new Date().toISOString() };
+            users.push(newUser);
+            saveUsers(users);
+            State.currentUser = newUser;
+
+            // Generate JWT
+            const token = generateJWT({ userId: newUser.id, email: newUser.email, exp: Date.now() + 86400000 });
+            SafeStorage.setItem('nexus_token', token);
+
+            showToast('Account created successfully!', 'success');
+            enterApp();
+        }
+
+        function handleLogout() {
+            showModal('Logout', 'Are you sure you want to logout?', 'Logout', () => {
+                SafeStorage.removeItem('nexus_token');
+                SafeStorage.removeItem('nova_token');
+                State.currentUser = null;
+                State.currentChatId = null;
+                State.currentMessages = [];
+                showScreen('login-screen');
+                $('login-email').value = '';
+                $('login-password').value = '';
+                showToast('Logged out successfully', 'info');
+            }, true);
+        }
+
+        function enterApp() {
+            $('main-app').classList.add('active');
+            showScreen('main-app');
+            showContentScreen('content-chat');
+            startNewChat();
+            initSpeechRecognition();
+            checkNetworkConnection();
+            // Apply saved theme
+            const settings = JSON.parse(SafeStorage.getItem('nexus_settings_' + State.currentUser.id) || SafeStorage.getItem('nova_settings_' + State.currentUser.id) || '{}');
+            if (settings.darkMode === false) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                $('dark-mode-toggle').classList.remove('active');
+            }
+            if (settings.autoRead) {
+                State.autoRead = true;
+                $('auto-read-toggle').classList.add('active');
+            }
+        }
+
+        /* ===== CHAT ENGINE ===== */
+        function startNewChat() {
+            State.currentChatId = uuid();
+            State.currentMessages = [];
+            const chatArea = $('chat-messages');
+            chatArea.innerHTML = '';
+            // Re-add welcome
+            chatArea.innerHTML = `<div id="chat-welcome" class="chat-welcome">
+        <div class="chat-welcome-icon"><i class="fas fa-bolt"></i></div>
+        <h2>How can I help you?</h2>
+        <p>I'm Nexus AI, your smart assistant. Ask me anything!</p>
+        <div class="suggestions">
+            <div class="suggestion-chip" onclick="useSuggestion('Tell me a joke')">Tell me a joke</div>
+            <div class="suggestion-chip" onclick="useSuggestion('What can you do?')">What can you do?</div>
+            <div class="suggestion-chip" onclick="useSuggestion('Calculate 25 * 48 + 137')">Math help</div>
+            <div class="suggestion-chip" onclick="useSuggestion('Tell me an interesting fact')">Fun fact</div>
+        </div>
+    </div>`;
+        }
+
+        function useSuggestion(text) {
+            $('chat-input').value = text;
+            $('send-btn').disabled = false;
+            sendMessage();
+        }
+
+        async function handleChatFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoading('Processing attachment...');
+            try {
+                if (file.type === 'application/pdf') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        fullText += content.items.map(item => item.str).join(' ') + '\n\n';
+                    }
+                    State.chatAttachedText = fullText.trim();
+                    State.chatAttachedImage = '';
+                    State.chatAttachedFileName = file.name;
+
+                    // Show preview
+                    $('chat-file-preview-name').innerHTML = `<i class="fas fa-file-pdf"></i> ${file.name} (${pdf.numPages} pages)`;
+                    $('chat-file-preview').classList.remove('hidden');
+                    showToast('PDF attached to chat!', 'success');
+                } else if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        State.chatAttachedImage = e.target.result;
+                        State.chatAttachedText = '';
+                        State.chatAttachedFileName = file.name;
+
+                        // Show preview
+                        $('chat-file-preview-name').innerHTML = `<i class="fas fa-image"></i> ${file.name}`;
+                        $('chat-file-preview').classList.remove('hidden');
+                        showToast('Image attached to chat!', 'success');
+                    };
+                    reader.readAsDataURL(file);
+                } else if (file.type.startsWith('text/') ||
+                    /\.(txt|json|csv|js|py|html|css|ts|jsx|tsx|sh|md|xml|yaml|yml|c|cpp|h|java|go|rs|php|sql)$/i.test(file.name)) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        State.chatAttachedText = e.target.result;
+                        State.chatAttachedImage = '';
+                        State.chatAttachedFileName = file.name;
+
+                        // Show preview
+                        $('chat-file-preview-name').innerHTML = `<i class="fas fa-file-lines"></i> ${file.name}`;
+                        $('chat-file-preview').classList.remove('hidden');
+                        showToast('Document attached to chat!', 'success');
+                    };
+                    reader.readAsText(file);
+                } else {
+                    showToast('Unsupported file type. Please upload a PDF, Image, or Text/Code document.', 'error');
+                }
+            } catch (err) {
+                showToast('Failed to read file: ' + err.message, 'error');
+            }
+            hideLoading();
+            event.target.value = '';
+            $('send-btn').disabled = false;
+        }
+
+        function removeChatAttachedFile() {
+            State.chatAttachedText = '';
+            State.chatAttachedImage = '';
+            State.chatAttachedFileName = '';
+            $('chat-file-preview').classList.add('hidden');
+
+        }
+
+        async function sendMessage() {
+            const input = $('chat-input');
+            const text = input.value.trim();
+            if (!text && !State.chatAttachedFileName) return;
+
+            // Hide welcome
+            const welcome = $('chat-welcome');
+            if (welcome) welcome.remove();
+
+            // Prepare message content & preview
+            let userMessageContent = text;
+            if (State.chatAttachedFileName) {
+                if (State.chatAttachedText) {
+                    userMessageContent = `[Attached Document: ${State.chatAttachedFileName}]\n\n${text}`;
+                } else if (State.chatAttachedImage) {
+                    userMessageContent = `[Attached Image: ${State.chatAttachedFileName}]\n\n${text}`;
+                }
+            }
+
+            // Add user message to UI
+            addMessage('user', userMessageContent, State.chatAttachedImage);
+
+            // Store message in State.currentMessages
+            const userMsgObj = {
+                role: 'user',
+                content: userMessageContent,
+                timestamp: new Date().toISOString()
+            };
+            if (State.chatAttachedImage) {
+                userMsgObj.image = State.chatAttachedImage;
+            }
+            State.currentMessages.push(userMsgObj);
+
+            input.value = '';
+            input.style.height = 'auto';
+
+
+            // Keep copies of attachments for the API call, then clear inputs
+            const attachedText = State.chatAttachedText;
+            const attachedImage = State.chatAttachedImage;
+            const attachedFileName = State.chatAttachedFileName;
+
+            removeChatAttachedFile();
+
+            // Show typing
+            showTyping();
+
+            // Fetch real-time context (weather, news, wiki, datetime) if needed
+            let realtimeCtx = null;
+            try { realtimeCtx = await getRealTimeContext(text || userMessageContent); } catch(_) {}
+
+            // Generate AI response
+            try {
+                let response = "";
+                const apiKey = GEMINI_API_KEY;
+                if (!apiKey) {
+                    throw new Error("Gemini API Key is missing in the configuration.");
+                }
+
+                // Build history
+                let contents = [];
+                for (let i = 0; i < State.currentMessages.length; i++) {
+                    const m = State.currentMessages[i];
+                    const role = m.role === 'user' ? 'user' : 'model';
+
+                    if (i === State.currentMessages.length - 1 && attachedImage) {
+                        const match = attachedImage.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+                        if (match) {
+                            contents.push({
+                                role: 'user',
+                                parts: [
+                                    { text: m.content },
+                                    {
+                                        inlineData: {
+                                            mimeType: match[1],
+                                            data: match[2]
+                                        }
+                                    }
+                                ]
+                            });
+                        } else {
+                            contents.push({ role, parts: [{ text: m.content }] });
+                        }
+                    } else {
+                        contents.push({ role, parts: [{ text: m.content }] });
+                    }
+                }
+
+                let systemPrompt = `You are Nexus AI — ek smart, helpful aur friendly AI assistant jo Archit ne banaya hai. Tu ek real assistant ki tarah baat karta hai — seedha, clear aur casual Hindi-English mix (Hinglish) mein. Kabhi bhi zyada formal ya purani Hindi mat bol. Normal roz ki boli bol jaise koi dost bolta hai. Code, math, logic sab samjhata hai. Markdown use karo formatting ke liye. Code blocks mein language specify karo.`;
+
+                // Inject real-time data if available
+                if (realtimeCtx) {
+                    systemPrompt += `\n\nNOTE: Neeche real-time live data diya gaya hai jo abhi fetch kiya gaya hai. Is data ko use karke user ka jawab do — bilkul accurate aur latest info ke saath:\n\n--- LIVE DATA ---\n${realtimeCtx}\n--- END LIVE DATA ---`;
+                }
+
+                if (attachedText) {
+                    systemPrompt += " User ne ek document attach kiya hai. Us document ko padh ke user ke sawaalon ka jawab do. Specific content refer karo.";
+                }
+                response = await fetchGemini(contents, systemPrompt);
+
+                hideTyping();
+                addMessage('assistant', response);
+                State.currentMessages.push({ role: 'assistant', content: response, timestamp: new Date().toISOString() });
+
+                // Auto-read
+                if (State.autoRead) speakText(response);
+
+                // Save chat
+                saveCurrentChat();
+            } catch (err) {
+                hideTyping();
+                showToast("Error generating response: " + err.message, "error");
+                addMessage('assistant', `**Error**: Failed to generate response.\n\nReason: ${err.message}\n\n*Please ensure your Gemini API Key in Settings is valid and you have a stable internet connection.*`);
+                State.currentMessages.push({ role: 'assistant', content: `Error: ${err.message}`, timestamp: new Date().toISOString() });
+                saveCurrentChat();
+            }
+
+
+        }
+
+        function addMessage(role, content, imageUrl = null) {
+            const chatArea = $('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            const avatarContent = role === 'user' ? (State.currentUser?.name?.[0] || 'U').toUpperCase() : '<i class="fas fa-bolt"></i>';
+            const actionsHtml = role === 'assistant' ? `<div class="msg-actions">
+        <button class="msg-action-btn" onclick="copyMessage(this)"><i class="fas fa-copy"></i> Copy</button>
+        <button class="msg-action-btn" onclick="regenerateMessage(this)"><i class="fas fa-rotate"></i> Regenerate</button>
+        <button class="msg-action-btn" onclick="speakMessage(this)"><i class="fas fa-volume-high"></i> Read</button>
+    </div>` : '';
+
+            let imgHtml = '';
+            if (imageUrl) {
+                imgHtml = `<img src="${imageUrl}" style="max-width:100%; max-height: 180px; border-radius:8px; margin-top:8px; display:block; object-fit: contain;">`;
+            }
+
+            msgDiv.innerHTML = `<div class="msg-avatar">${avatarContent}</div>
+        <div><div class="msg-bubble">${formatMessage(content)}${imgHtml}</div>${actionsHtml}</div>`;
+            chatArea.appendChild(msgDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function formatMessage(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code style="background:var(--bg-elevated);padding:1px 5px;border-radius:4px;font-size:12px">$1</code>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function showTyping() {
+            const chatArea = $('chat-messages');
+            const typing = document.createElement('div');
+            typing.className = 'message assistant';
+            typing.id = 'typing-indicator';
+            typing.innerHTML = `<div class="msg-avatar"><i class="fas fa-bolt"></i></div>
+        <div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+            chatArea.appendChild(typing);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function hideTyping() {
+            const t = $('typing-indicator');
+            if (t) t.remove();
+        }
+
+        function copyMessage(btn) {
+            const bubble = btn.closest('.message').querySelector('.msg-bubble');
+            const text = bubble.innerText;
+            navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'success'));
+        }
+
+        function speakMessage(btn) {
+            const bubble = btn.closest('.message').querySelector('.msg-bubble');
+            speakText(bubble.innerText);
+        }
+
+        async function regenerateMessage(btn) {
+            const msgDiv = btn.closest('.message');
+            const lastUserMsg = [...State.currentMessages].reverse().find(m => m.role === 'user');
+            if (lastUserMsg) {
+                State.currentMessages.pop();
+                msgDiv.remove();
+                showTyping();
+
+                try {
+                    let response = "";
+                    const apiKey = GEMINI_API_KEY;
+                    if (!apiKey) {
+                        throw new Error("Gemini API Key is missing in the configuration.");
+                    }
+                    const contents = [];
+                    for (let i = 0; i < State.currentMessages.length; i++) {
+                        const m = State.currentMessages[i];
+                        const role = m.role === 'user' ? 'user' : 'model';
+                        if (m.image) {
+                            const match = m.image.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+                            if (match) {
+                                contents.push({
+                                    role: 'user',
+                                    parts: [
+                                        { text: m.content },
+                                        {
+                                            inlineData: {
+                                                mimeType: match[1],
+                                                data: match[2]
+                                            }
+                                        }
+                                    ]
+                                });
+                            } else {
+                                contents.push({ role, parts: [{ text: m.content }] });
+                            }
+                        } else {
+                            contents.push({ role, parts: [{ text: m.content }] });
+                        }
+                    }
+                    const systemPrompt = "You are Nexus AI, a highly advanced, ultra-smart, and friendly AI assistant. You possess deep expertise in coding, programming troubleshooting, mathematics, text analysis, and bilingual communication (Hindi/English). Provide well-structured, clear answers with appropriate markdown formatting. Specify programming languages for syntax highlighting in code blocks.";
+                    response = await fetchGemini(contents, systemPrompt);
+
+                    hideTyping();
+                    addMessage('assistant', response);
+                    State.currentMessages.push({ role: 'assistant', content: response, timestamp: new Date().toISOString() });
+                    saveCurrentChat();
+                } catch (err) {
+                    hideTyping();
+                    showToast("Error regenerating response: " + err.message, "error");
+                    addMessage('assistant', `**Error**: Failed to regenerate response.\n\nReason: ${err.message}`);
+                }
+            }
+        }
+
+        function generateAIResponseWithContext(text, attachedText, attachedImage) {
+            return "This application is now online-only. Please set a valid Gemini API Key and connect to the internet to use Nexus AI.";
+        }
+
+        function generateAIResponse(msg) {
+            return "This application is now online-only. Please set a valid Gemini API Key and connect to the internet to use Nexus AI.";
+        }
+
+        /* ===== CHAT HISTORY ===== */
+        function renderHistory() {
+            if (!State.currentUser) return;
+            const query = ($('history-search')?.value || '').toLowerCase();
+            let chats = getChats().filter(c => c.userId === State.currentUser.id);
+            if (query) chats = chats.filter(c => c.title.toLowerCase().includes(query) || c.messages.some(m => m.content.toLowerCase().includes(query)));
+            chats.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+            const list = $('history-list');
+            if (chats.length === 0) {
+                list.innerHTML = `<div class="empty-state"><i class="fas fa-comments"></i><p>${query ? 'No matching conversations found' : 'No conversations yet. Start chatting!'}</p></div>`;
+                return;
+            }
+            list.innerHTML = chats.map(c => {
+                const date = new Date(c.updatedAt);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const msgCount = c.messages.length;
+                return `<div class="history-item" onclick="loadChat('${c.id}')">
+            <div class="history-item-icon"><i class="fas fa-message"></i></div>
+            <div class="history-item-info">
+                <div class="history-item-title">${escapeHtml(c.title)}</div>
+                <div class="history-item-date">${dateStr} · ${msgCount} messages</div>
+            </div>
+            <button class="history-item-delete" onclick="event.stopPropagation();deleteChat('${c.id}')"><i class="fas fa-trash"></i></button>
+        </div>`;
+            }).join('');
+        }
+
+        function deleteChat(id) {
+            showModal('Delete Chat', 'Are you sure you want to delete this conversation?', 'Delete', () => {
+                let chats = getChats().filter(c => c.id !== id);
+                saveChats(chats);
+                if (State.currentChatId === id) startNewChat();
+                renderHistory();
+                showToast('Chat deleted', 'info');
+            }, true);
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        /* ===== VOICE FEATURES ===== */
+        function initSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            State.recognition = new SR();
+            State.recognition.continuous = false;
+            State.recognition.interimResults = false;
+            State.recognition.lang = 'en-US';
+            State.recognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                $('chat-input').value = text;
+                $('send-btn').disabled = false;
+                stopRecording();
+            };
+            State.recognition.onerror = () => stopRecording();
+            State.recognition.onend = () => stopRecording();
+        }
+
+        function toggleVoiceInput() {
+            if (!State.recognition) { showToast('Voice input not supported in this browser', 'error'); return; }
+            if (State.isRecording) { State.recognition.stop(); stopRecording(); }
+            else { State.isRecording = true; $('mic-btn').classList.add('recording'); State.recognition.start(); showToast('Listening... Speak now', 'info'); }
+        }
+
+        function stopRecording() {
+            State.isRecording = false;
+            $('mic-btn').classList.remove('recording');
+        }
+
+        function speakText(text) {
+            if (!State.speechSynth) return;
+            State.speechSynth.cancel();
+            const u = new SpeechSynthesisUtterance(text.replace(/\*\*/g, '').replace(/<[^>]*>/g, ''));
+            u.rate = 0.95;
+            u.pitch = 1;
+            // Try to pick a good voice
+            const voices = State.speechSynth.getVoices();
+            const preferred = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) || voices.find(v => v.lang.startsWith('en'));
+            if (preferred) u.voice = preferred;
+            State.speechSynth.speak(u);
+        }
+
+        /* ===== PDF ASSISTANT ===== */
+        async function handlePDFUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.type !== 'application/pdf') { showToast('Please upload a PDF file', 'error'); return; }
+
+            showLoading('Reading PDF...');
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    fullText += content.items.map(item => item.str).join(' ') + '\n\n';
+                }
+                State.pdfText = fullText.trim();
+                if (!State.pdfText) { showToast('Could not extract text from this PDF', 'error'); hideLoading(); return; }
+                $('pdf-upload-zone').classList.add('has-file');
+                $('pdf-upload-zone').innerHTML = `<i class="fas fa-file-pdf" style="color:var(--success)"></i><p style="color:var(--success)">${file.name}</p><small>${pdf.numPages} pages extracted</small>`;
+                $('pdf-actions').classList.remove('hidden');
+                $('pdf-question-section').classList.remove('hidden');
+                $('pdf-result').classList.remove('hidden');
+                $('pdf-result').textContent = `PDF loaded successfully! ${State.pdfText.length} characters extracted from ${pdf.numPages} pages.\n\nUse the buttons above to analyze the content.`;
+                showToast('PDF processed successfully!', 'success');
+            } catch (err) {
+                showToast('Failed to process PDF: ' + err.message, 'error');
+            }
+            hideLoading();
+            event.target.value = '';
+        }
+
+        async function pdfSummarize() {
+            if (!State.pdfText) { showToast('Please upload a PDF first', 'error'); return; }
+            showLoading('Generating summary...');
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) {
+                showToast('Gemini API Key is required.', 'error');
+                hideLoading();
+                return;
+            }
+            try {
+                const contents = [{
+                    role: 'user',
+                    parts: [{ text: `Here is the PDF content:\n\n${State.pdfText}\n\nProvide a comprehensive summary of this PDF content.` }]
+                }];
+                const systemPrompt = "You are Nexus AI PDF Assistant. Summarize the provided PDF content accurately, highlighting the most important topics.";
+                const response = await fetchGemini(contents, systemPrompt);
+                $('pdf-result').textContent = '';
+                $('pdf-result').innerHTML = formatMessage(response);
+            } catch (apiError) {
+                console.error("Gemini API error during PDF summary:", apiError);
+                showToast("Gemini API Error: " + apiError.message, "error");
+                $('pdf-result').innerHTML = `<span style="color:var(--error)">**Error**: Failed to generate summary. ${apiError.message}</span>`;
+            }
+            hideLoading();
+        }
+
+        async function pdfKeyPoints() {
+            if (!State.pdfText) { showToast('Please upload a PDF first', 'error'); return; }
+            showLoading('Extracting key points...');
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) {
+                showToast('Gemini API Key is required.', 'error');
+                hideLoading();
+                return;
+            }
+            try {
+                const contents = [{
+                    role: 'user',
+                    parts: [{ text: `Here is the PDF content:\n\n${State.pdfText}\n\nExtract the main key points from this PDF.` }]
+                }];
+                const systemPrompt = "You are Nexus AI PDF Assistant. Extract key points and list them clearly as bullet points from the provided PDF content.";
+                const response = await fetchGemini(contents, systemPrompt);
+                $('pdf-result').textContent = '';
+                $('pdf-result').innerHTML = formatMessage(response);
+            } catch (apiError) {
+                console.error("Gemini API error during PDF key points:", apiError);
+                showToast("Gemini API Error: " + apiError.message, "error");
+                $('pdf-result').innerHTML = `<span style="color:var(--error)">**Error**: Failed to extract key points. ${apiError.message}</span>`;
+            }
+            hideLoading();
+        }
+
+        function pdfFullText() {
+            if (!State.pdfText) { showToast('Please upload a PDF first', 'error'); return; }
+            const preview = State.pdfText.length > 3000 ? State.pdfText.substring(0, 3000) + '\n\n[... truncated, showing first 3000 characters]' : State.pdfText;
+            $('pdf-result').textContent = '';
+            $('pdf-result').innerHTML = formatMessage(`**Full Extracted Text**\n\n${preview}`);
+        }
+
+        async function pdfAskQuestion() {
+            const question = $('pdf-question-input').value.trim();
+            if (!question || !State.pdfText) return;
+            showLoading('Searching answer...');
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) {
+                showToast('Gemini API Key is required.', 'error');
+                hideLoading();
+                return;
+            }
+            try {
+                const contents = [{
+                    role: 'user',
+                    parts: [{ text: `PDF content:\n\n${State.pdfText}\n\nQuestion: ${question}` }]
+                }];
+                const systemPrompt = "You are Nexus AI PDF Assistant. Answer the question based on the provided PDF content. If the answer is not in the text, politely state that it's not present.";
+                const response = await fetchGemini(contents, systemPrompt);
+                $('pdf-result').textContent = '';
+                $('pdf-result').innerHTML = formatMessage(response);
+                $('pdf-question-input').value = '';
+            } catch (apiError) {
+                console.error("Gemini API error during PDF question:", apiError);
+                showToast("Gemini API Error: " + apiError.message, "error");
+                $('pdf-result').innerHTML = `<span style="color:var(--error)">**Error**: Failed to search answer. ${apiError.message}</span>`;
+            }
+            hideLoading();
+        }
+
+        /* ===== IMAGE ANALYSIS ===== */
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !file.type.startsWith('image/')) { showToast('Please upload an image file', 'error'); return; }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                $('image-preview').src = e.target.result;
+                $('image-preview').classList.add('show');
+                $('image-upload-zone').classList.add('has-file');
+                $('image-upload-zone').innerHTML = `<i class="fas fa-image" style="color:var(--success)"></i><p style="color:var(--success)">${file.name}</p><small>Image loaded</small>`;
+                $('image-actions').classList.remove('hidden');
+                $('image-result').classList.remove('hidden');
+                $('image-result').textContent = 'Image loaded! Use the buttons above to analyze it.';
+                State.imageText = '';
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        async function imageOCR() {
+            showLoading('Extracting text with OCR...');
+            try {
+                const result = await Tesseract.recognize($('image-preview').src, 'eng+hin', { logger: m => { } });
+                State.imageText = result.data.text.trim();
+                if (!State.imageText) {
+                    $('image-result').textContent = '';
+                    $('image-result').innerHTML = formatMessage('No text could be extracted from this image. The image might not contain readable text.');
+                } else {
+                    $('image-result').textContent = '';
+                    $('image-result').innerHTML = formatMessage(`**Extracted Text:**\n\n${State.imageText}`);
+                }
+                showToast('OCR complete!', 'success');
+            } catch (err) {
+                showToast('OCR failed: ' + err.message, 'error');
+            }
+            hideLoading();
+        }
+
+
+
+        /* ===== TRANSLATION ===== */
+        async function handleTranslate() {
+            const text = $('translate-input').value.trim();
+            if (!text) { showToast('Please enter text to translate', 'error'); return; }
+
+            let from = $('lang-from').value;
+            const to = $('lang-to').value;
+
+            // Auto-detect language
+            if (from === 'auto') {
+                const hasHindi = /[\u0900-\u097F]/.test(text);
+                from = hasHindi ? 'hi' : 'en';
+            }
+
+            if (from === to) {
+                $('translate-result').textContent = text;
+                $('translate-result').classList.remove('hidden');
+                $('translate-actions').classList.remove('hidden');
+                $('translate-actions').style.display = 'flex';
+                showToast('Source and target languages are the same', 'info');
+                return;
+            }
+
+            showLoading('Translating...');
+            try {
+                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`);
+                const data = await response.json();
+                if (data.responseData && data.responseData.translatedText) {
+                    $('translate-result').textContent = data.responseData.translatedText;
+                    $('translate-result').classList.remove('hidden');
+                    $('translate-actions').classList.remove('hidden');
+                    $('translate-actions').style.display = 'flex';
+                    showToast('Translation complete!', 'success');
+                } else {
+                    showToast('Translation failed. Try again.', 'error');
+                }
+            } catch (err) {
+                showToast('Translation service unavailable. Check your connection.', 'error');
+            }
+            hideLoading();
+        }
+
+        function swapLanguages() {
+            const from = $('lang-from').value;
+            const to = $('lang-to').value;
+            if (from !== 'auto') $('lang-from').value = to;
+            $('lang-to').value = from;
+            $('translate-result').textContent = '';
+            $('translate-actions').classList.add('hidden');
+            $('translate-actions').style.display = 'none';
+        }
+
+        /* ===== MISSING COMPONENT FUNCTIONS ===== */
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showToast('Please upload an image file', 'error'); return; }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target.result;
+                State.currentUser.photo = base64;
+
+                // Save to users list
+                const users = getUsers();
+                const idx = users.findIndex(u => u.id === State.currentUser.id);
+                if (idx >= 0) {
+                    users[idx].photo = base64;
+                    saveUsers(users);
+                }
+
+                renderProfile();
+                showToast('Profile photo updated!', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function editName() {
+            if (!State.currentUser) return;
+            showModal('Edit Name', 'Enter your new name:', 'Save', () => {
+                const input = $('edit-profile-name-input');
+                const newName = input ? input.value.trim() : '';
+                if (!newName) { showToast('Name cannot be empty', 'error'); return; }
+
+                State.currentUser.name = newName;
+                // Update in users database
+                const users = getUsers();
+                const idx = users.findIndex(u => u.id === State.currentUser.id);
+                if (idx >= 0) {
+                    users[idx].name = newName;
+                    saveUsers(users);
+                }
+
+                renderProfile();
+                showToast('Name updated successfully!', 'success');
+            });
+            // Inject input element
+            $('modal-extra').innerHTML = `<input type="text" id="edit-profile-name-input" class="edit-name-input" value="${escapeHtml(State.currentUser.name)}">`;
+            setTimeout(() => $('edit-profile-name-input').focus(), 100);
+        }
+
+        function renderProfile() {
+            if (!State.currentUser) return;
+
+            // Set profile photo
+            const photoEl = $('profile-photo');
+            photoEl.src = State.currentUser.photo || `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f59e0b"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+
+            $('profile-name').textContent = State.currentUser.name;
+            $('profile-email').textContent = State.currentUser.email;
+
+            // Calculate stats
+            const chats = getChats().filter(c => c.userId === State.currentUser.id);
+            let totalMessages = 0;
+            chats.forEach(c => totalMessages += c.messages.length);
+
+            $('stat-chats').textContent = chats.length;
+            $('stat-messages').textContent = totalMessages;
+        }
+
+        function clearAllData() {
+            showModal('Clear All Data', 'Are you sure you want to clear all app data? This will delete all users, chats, and settings, and log you out.', 'Clear Everything', () => {
+                SafeStorage.clear();
+                State.currentUser = null;
+                State.currentChatId = null;
+                State.currentMessages = [];
+                showScreen('login-screen');
+                showToast('All app data cleared successfully!', 'info');
+            }, true);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const newTheme = isDark ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+
+            const toggle = $('dark-mode-toggle');
+            if (newTheme === 'dark') {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+
+            // Save to user settings
+            if (State.currentUser) {
+                const settingsKey = 'nexus_settings_' + State.currentUser.id;
+                const settings = JSON.parse(SafeStorage.getItem(settingsKey) || SafeStorage.getItem('nova_settings_' + State.currentUser.id) || '{}');
+                settings.darkMode = (newTheme === 'dark');
+                SafeStorage.setItem(settingsKey, JSON.stringify(settings));
+            }
+            showToast(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode enabled`, 'success');
+        }
+
+        function toggleAutoRead() {
+            State.autoRead = !State.autoRead;
+            const toggle = $('auto-read-toggle');
+            if (State.autoRead) {
+                toggle.classList.add('active');
+                showToast('Auto read responses enabled', 'success');
+            } else {
+                toggle.classList.remove('active');
+                if (State.speechSynth) State.speechSynth.cancel();
+                showToast('Auto read responses disabled', 'info');
+            }
+
+            // Save to user settings
+            if (State.currentUser) {
+                const settingsKey = 'nexus_settings_' + State.currentUser.id;
+                const settings = JSON.parse(SafeStorage.getItem(settingsKey) || SafeStorage.getItem('nova_settings_' + State.currentUser.id) || '{}');
+                settings.autoRead = State.autoRead;
+                SafeStorage.setItem(settingsKey, JSON.stringify(settings));
+            }
+        }
+
+        function renderSettings() {
+            // API key configuration is embedded in the application code.
+        }
+
+        // ===== REAL-TIME SEARCH HELPERS =====
+
+        function detectQueryIntent(text) {
+            const t = text.toLowerCase();
+            // Weather
+            if (/mausam|weather|temperature|barish|baarish|garmi|sardi|aaj ka mausam|aaj weather|tapman|humidity|forecast|rain|snow|wind|climate/.test(t))
+                return 'weather';
+            // News
+            if (/news|khabar|khabaren|latest|aaj ki khabar|today news|breaking|headlines|samachar|taza|taaza|taji/.test(t))
+                return 'news';
+            // Wikipedia / Facts
+            if (/kaun hai|kaun hain|kya hai|kya hain|who is|what is|wikipedia|history|itihas|jankari|batao|define|meaning|matlab|explain|jankaari|detail/.test(t))
+                return 'wiki';
+            // Time / Date
+            if (/time|samay|abhi kitne baje|kitne baje|aaj kya date|aaj ki date|date today|current time/.test(t))
+                return 'datetime';
+            return 'general';
+        }
+
+        function extractCity(text) {
+            // Try to extract city name from weather queries
+            const patterns = [
+                /(?:mausam|weather|temperature)\s+(?:of|in|at|ka|ki|ke)?\s*([a-zA-Z\u0900-\u097F\s]{2,25})/i,
+                /([a-zA-Z\u0900-\u097F]{3,20})\s+(?:mausam|weather|temperature|ka mausam)/i,
+                /aaj\s+([a-zA-Z\u0900-\u097F]{3,20})\s+(?:mein|me)/i
+            ];
+            for (const p of patterns) {
+                const m = text.match(p);
+                if (m && m[1]) {
+                    const city = m[1].trim().replace(/\s+/g, '+');
+                    if (city.length > 1) return city;
+                }
+            }
+            return 'Delhi'; // default
+        }
+
+        async function fetchWeatherData(text) {
+            try {
+                const city = extractCity(text);
+                const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                const data = await res.json();
+                const cur = data.current_condition[0];
+                const area = data.nearest_area[0];
+                const areaName = area?.areaName?.[0]?.value || city;
+                const country = area?.country?.[0]?.value || '';
+                const weather = cur.weatherDesc[0].value;
+                const tempC = cur.temp_C;
+                const feelsC = cur.FeelsLikeC;
+                const humidity = cur.humidity;
+                const windKmph = cur.windspeedKmph;
+                const visibility = cur.visibility;
+
+                // 3-day forecast
+                const forecast = data.weather.slice(0,3).map(day => {
+                    return `📅 ${day.date}: ${day.hourly[4]?.weatherDesc?.[0]?.value || ''}, Max: ${day.maxtempC}°C, Min: ${day.mintempC}°C`;
+                }).join('\n');
+
+                return `📍 Location: ${areaName}, ${country}
+🌤️ Weather: ${weather}
+🌡️ Temperature: ${tempC}°C (Feels like ${feelsC}°C)
+💧 Humidity: ${humidity}%
+💨 Wind Speed: ${windKmph} km/h
+👁️ Visibility: ${visibility} km
+
+3-Day Forecast:
+${forecast}
+
+(Data fetched live from wttr.in)`;
+            } catch (e) {
+                console.warn('Weather fetch error:', e);
+                return null;
+            }
+        }
+
+        async function fetchNewsData(text) {
+            try {
+                // Use Google News RSS via rss2json (free, CORS-friendly)
+                const t = text.toLowerCase();
+                let topic = 'top-headlines';
+                if (/cricket|ipl|sport|khel/.test(t)) topic = 'sports';
+                else if (/tech|technology|ai|artificial|phone|mobile/.test(t)) topic = 'technology';
+                else if (/business|market|share|stock|economy/.test(t)) topic = 'business';
+                else if (/bollywood|film|movie|cinema|entertainment/.test(t)) topic = 'entertainment';
+                else if (/health|sehat|dawai|hospital|corona|covid/.test(t)) topic = 'health';
+                else if (/politics|election|sarkar|government|neta/.test(t)) topic = 'politics';
+
+                const rssUrl = encodeURIComponent(`https://news.google.com/rss/search?q=${topic}&hl=en-IN&gl=IN&ceid=IN:en`);
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}&count=8`;
+                const res = await fetch(apiUrl);
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (!data.items || data.items.length === 0) return null;
+
+                const headlines = data.items.slice(0,8).map((item, i) => {
+                    const date = new Date(item.pubDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+                    return `${i+1}. **${item.title}**\n   📰 ${item.author || 'Google News'} | 🕒 ${date}`;
+                }).join('\n\n');
+
+                return `📰 **Latest News** (Live from Google News - ${new Date().toLocaleString('en-IN')})\n\n${headlines}\n\n*(Real-time headlines)*`;
+            } catch (e) {
+                console.warn('News fetch error:', e);
+                return null;
+            }
+        }
+
+        async function fetchWikiData(text) {
+            try {
+                // Extract search term
+                const cleaned = text
+                    .replace(/kaun hai|kaun hain|kya hai|kya hain|who is|what is|wikipedia|batao|bata do|ke baare mein|ke bare mein|explain|define|meaning|matlab|detail/gi, '')
+                    .trim();
+                const searchTerm = encodeURIComponent(cleaned.slice(0, 100));
+                // Search Wikipedia
+                const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${searchTerm}&limit=1&format=json&origin=*`;
+                const sRes = await fetch(searchUrl);
+                const sData = await sRes.json();
+                if (!sData[1] || sData[1].length === 0) return null;
+                const title = encodeURIComponent(sData[1][0]);
+                // Get summary
+                const sumUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`;
+                const sumRes = await fetch(sumUrl);
+                if (!sumRes.ok) return null;
+                const sumData = await sumRes.json();
+                return `📖 **Wikipedia: ${sumData.title}**\n\n${sumData.extract}\n\n🔗 Source: ${sumData.content_urls?.desktop?.page || 'Wikipedia'}`;
+            } catch (e) {
+                console.warn('Wiki fetch error:', e);
+                return null;
+            }
+        }
+
+        function getCurrentDateTime() {
+            const now = new Date();
+            return `🕒 Current Date & Time (India): ${now.toLocaleString('en-IN', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Kolkata'
+            })}`;
+        }
+
+        async function getRealTimeContext(text) {
+            const intent = detectQueryIntent(text);
+            let ctx = null;
+            if (intent === 'weather') ctx = await fetchWeatherData(text);
+            else if (intent === 'news') ctx = await fetchNewsData(text);
+            else if (intent === 'wiki') ctx = await fetchWikiData(text);
+            else if (intent === 'datetime') ctx = getCurrentDateTime();
+            return ctx;
+        }
+
+        // ===== END REAL-TIME SEARCH HELPERS =====
+
+        async function fetchGemini(contents, systemInstruction = null) {
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) throw new Error("Gemini API Key configuration is missing.");
+
+            const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite"];
+            let lastError = null;
+
+            for (const model of models) {
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                    const payload = {
+                        contents: contents
+                    };
+                    if (systemInstruction) {
+                        payload.systemInstruction = {
+                            parts: [{ text: systemInstruction }]
+                        };
+                    }
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    
+                    if (response.status === 200) {
+                        if (data.error) throw new Error(data.error.message);
+                        if (!data.candidates || data.candidates.length === 0) throw new Error("No response generated from AI.");
+                        return data.candidates[0].content.parts[0].text;
+                    } else {
+                        const errMsg = data.error ? data.error.message : `HTTP error status ${response.status}`;
+                        console.warn(`Model ${model} failed: ${errMsg}`);
+                        lastError = new Error(errMsg);
+                    }
+                } catch (e) {
+                    console.warn(`Model ${model} request error:`, e);
+                    lastError = e;
+                }
+            }
+            throw lastError || new Error("All fallback models failed to respond.");
+        }
+
+        function copyTranslation() {
+            const text = $('translate-result').textContent;
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Translation copied to clipboard!', 'success');
+            });
+        }
+
+        function speakTranslation() {
+            const text = $('translate-result').textContent;
+            if (!text) return;
+            if (!State.speechSynth) { showToast('Text-to-speech not supported', 'error'); return; }
+
+            State.speechSynth.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 0.95;
+            u.pitch = 1;
+
+            const langTo = $('lang-to').value;
+            u.lang = langTo === 'hi' ? 'hi-IN' : 'en-US';
+
+            const voices = State.speechSynth.getVoices();
+            const preferred = voices.find(v => v.lang.startsWith(langTo));
+            if (preferred) u.voice = preferred;
+
+            State.speechSynth.speak(u);
+            showToast('Reading translation...', 'info');
+        }
+
+        /* ===== NETWORK & KEY STATUS STATUS CHECKS ===== */
+        function checkNetworkConnection() {
+            const isOnline = navigator.onLine;
+            const overlay = $('offline-overlay');
+            if (isOnline) {
+                overlay.classList.remove('show');
+            } else {
+                overlay.classList.add('show');
+                showToast('Nexus AI requires internet connection', 'error');
+            }
+        }
+
+        window.addEventListener('online', () => {
+            $('offline-overlay').classList.remove('show');
+            showToast('Internet connection restored!', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            $('offline-overlay').classList.add('show');
+            showToast('Connection lost. Working offline is disabled.', 'error');
+        });
+
+        async function imageDescribe() {
+            const img = $('image-preview');
+            if (!img.src) { showToast('Please upload an image first', 'error'); return; }
+            showLoading('Analyzing image...');
+
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) {
+                showToast('Gemini API Key is required.', 'error');
+                hideLoading();
+                return;
+            }
+            try {
+                const src = img.src;
+                const match = src.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+                if (!match) throw new Error("Invalid image format.");
+                const mimeType = match[1];
+                const base64Data = match[2];
+
+                const contents = [{
+                    role: 'user',
+                    parts: [
+                        { text: "Describe this image in detail. If it contains text, mention what it says. If it is a screenshot of an error or code issue, explain the error clearly and offer concrete suggestions to resolve it." },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }];
+                const systemPrompt = "You are Nexus AI Multimodal Assistant. Describe the image details, explain errors or text contained within them, and be helpful and precise.";
+                const response = await fetchGemini(contents, systemPrompt);
+                $('image-result').textContent = '';
+                $('image-result').innerHTML = formatMessage(response);
+                showToast('Image analysis complete!', 'success');
+            } catch (apiError) {
+                console.error("Gemini API error during image description:", apiError);
+                showToast("Gemini API Error: " + apiError.message, "error");
+                $('image-result').innerHTML = `<span style="color:var(--error)">**Error**: Failed to analyze image. ${apiError.message}</span>`;
+            }
+            hideLoading();
+        }
+
+        async function imageAnalyze() {
+            const apiKey = GEMINI_API_KEY;
+            if (!apiKey) {
+                showToast('Gemini API Key is required.', 'error');
+                return;
+            }
+            const img = $('image-preview');
+            if (!img.src) { showToast('Please upload an image first', 'error'); return; }
+            showLoading('Performing deep analysis...');
+            try {
+                const src = img.src;
+                const match = src.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+                if (!match) throw new Error("Invalid image format.");
+                const mimeType = match[1];
+                const base64Data = match[2];
+
+                const contents = [{
+                    role: 'user',
+                    parts: [
+                        { text: "Perform a deep, advanced analysis of this image. Extract all key visual elements, text, structure, colors, and design patterns. If there is code, check for logical bugs, layout errors, or security flaws." },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }];
+                const systemPrompt = "You are Nexus AI Deep Visual Analyst. Provide a structural, technical, and detailed breakdown of the image.";
+                const response = await fetchGemini(contents, systemPrompt);
+                $('image-result').textContent = '';
+                $('image-result').innerHTML = formatMessage(response);
+                showToast('Deep analysis complete!', 'success');
+            } catch (apiError) {
+                console.error("Gemini API error during image analysis:", apiError);
+                showToast("Gemini API Error: " + apiError.message, "error");
+                $('image-result').innerHTML = `<span style="color:var(--error)">**Error**: Deep analysis failed. ${apiError.message}</span>`;
+            }
+            hideLoading();
+        }
+
+        /* ===== UTILITY CHAT ACTIONS ===== */
+        function autoResizeInput(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        function handleInputKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function clearCurrentChat() {
+            showModal('Clear Chat', 'Are you sure you want to clear the messages in this chat?', 'Clear', () => {
+                State.currentMessages = [];
+                const chatArea = $('chat-messages');
+                chatArea.innerHTML = '';
+                saveCurrentChat();
+                showToast('Chat cleared', 'info');
+            }, true);
+        }
+
+        function saveCurrentChat() {
+            if (!State.currentUser || !State.currentChatId) return;
+            const chats = getChats();
+            const idx = chats.findIndex(c => c.id === State.currentChatId);
+            
+            const firstMsg = State.currentMessages[0]?.content || "New Chat";
+            const title = firstMsg.length > 25 ? firstMsg.substring(0, 25) + '...' : firstMsg;
+
+            if (idx >= 0) {
+                chats[idx].messages = State.currentMessages;
+                chats[idx].updatedAt = new Date().toISOString();
+            } else {
+                const newChat = {
+                    id: State.currentChatId,
+                    userId: State.currentUser.id,
+                    title: title,
+                    messages: State.currentMessages,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                chats.push(newChat);
+            }
+            saveChats(chats);
+        }
+
+        function loadChat(chatId) {
+            const chats = getChats();
+            const chat = chats.find(c => c.id === chatId);
+            if (!chat) return;
+
+            State.currentChatId = chatId;
+            State.currentMessages = chat.messages || [];
+
+            const chatArea = $('chat-messages');
+            chatArea.innerHTML = '';
+
+            if (State.currentMessages.length === 0) {
+                startNewChat();
+            } else {
+                const welcome = $('chat-welcome');
+                if (welcome) welcome.remove();
+
+                State.currentMessages.forEach(msg => {
+                    addMessage(msg.role === 'user' ? 'user' : 'assistant', msg.content, msg.image);
+                });
+            }
+
+            showContentScreen('content-chat');
+        }
+
+        /* ===== APP INITIALIZATION ===== */
+        function initApp() {
+            // Simulate splash screen for 1.5 seconds, then check session
+            setTimeout(() => {
+                $('splash-screen').classList.remove('active');
+                try {
+                    const token = SafeStorage.getItem('nexus_token') || SafeStorage.getItem('nova_token');
+                    const decoded = verifyJWT(token);
+                    if (decoded && decoded.userId) {
+                        const users = getUsers();
+                        const user = users.find(u => u.id === decoded.userId);
+                        if (user) {
+                            State.currentUser = user;
+                            enterApp();
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error('App init check session failed:', e);
+                }
+                showScreen('login-screen');
+            }, 1500);
+        }
+
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+
+</html>
