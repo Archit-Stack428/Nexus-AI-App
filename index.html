@@ -2770,7 +2770,9 @@
                     }
                 }
 
-                let systemPrompt = `You are Nexus AI — ek smart, helpful aur friendly AI assistant jo Archit ne banaya hai. Tu ek real assistant ki tarah baat karta hai — seedha, clear aur casual Hindi-English mix (Hinglish) mein. Kabhi bhi zyada formal ya purani Hindi mat bol. Normal roz ki boli bol jaise koi dost bolta hai. Code, math, logic sab samjhata hai. Markdown use karo formatting ke liye. Code blocks mein language specify karo.`;
+                let systemPrompt = `Your name is Nexus AI. You are a highly advanced, smart, helpful, and friendly AI assistant created and developed by Archit. If the user asks 'who made you', 'who created you', 'who developed you', 'who trained you', or anything about your developer/creator, you MUST state clearly and proudly that you were built/created/developed by Archit, followed by a short, enthusiastic introduction of yourself and your features. Never say you are built or trained by Google or OpenAI. 
+
+Respond in normal, clear, and natural Hindi (or Hinglish if the query is in English/Hinglish). Use simple, everyday Hindi/Hinglish (avoiding overly complex, academic, or ancient Sanskritized Hindi, and avoiding pure robotic/formal language; keep it modern, friendly, and easy to understand, like a knowledgeable companion). Explain coding, programming troubleshooting, mathematics, and logic step-by-step. Use Markdown for formatting, and specify programming languages in code blocks.`;
 
                 // Inject real-time data if available
                 if (realtimeCtx) {
@@ -2899,7 +2901,7 @@
                             contents.push({ role, parts: [{ text: m.content }] });
                         }
                     }
-                    const systemPrompt = "You are Nexus AI, a highly advanced, ultra-smart, and friendly AI assistant. You possess deep expertise in coding, programming troubleshooting, mathematics, text analysis, and bilingual communication (Hindi/English). Provide well-structured, clear answers with appropriate markdown formatting. Specify programming languages for syntax highlighting in code blocks.";
+                    const systemPrompt = "Your name is Nexus AI. You are a highly advanced, smart, helpful, and friendly AI assistant created and developed by Archit. If the user asks 'who made you', 'who created you', 'who developed you', 'who trained you', or anything about your developer/creator, you MUST state clearly and proudly that you were built/created/developed by Archit, followed by a short, enthusiastic introduction of yourself and your features. Never say you are built or trained by Google or OpenAI. Respond in normal, clear, and natural Hindi (or Hinglish if the query is in English/Hinglish). Use simple, everyday Hindi/Hinglish (avoiding overly complex, academic, or ancient Sanskritized Hindi, and avoiding pure robotic/formal language; keep it modern, friendly, and easy to understand, like a knowledgeable companion). Explain coding, programming troubleshooting, mathematics, and logic step-by-step. Use Markdown for formatting, and specify programming languages in code blocks.";
                     response = await fetchGemini(contents, systemPrompt);
 
                     hideTyping();
@@ -3351,35 +3353,64 @@
         function detectQueryIntent(text) {
             const t = text.toLowerCase();
             // Weather
-            if (/mausam|weather|temperature|barish|baarish|garmi|sardi|aaj ka mausam|aaj weather|tapman|humidity|forecast|rain|snow|wind|climate/.test(t))
+            if (/mausam|weather|temperature|barish|baarish|garmi|sardi|aaj ka mausam|aaj weather|tapman|humidity|forecast|rain|snow|wind|climate|monsoon|clouds|cloudy|sunny/.test(t))
                 return 'weather';
             // News
-            if (/news|khabar|khabaren|latest|aaj ki khabar|today news|breaking|headlines|samachar|taza|taaza|taji/.test(t))
+            if (/news|khabar|khabaren|khabrein|latest|aaj ki khabar|today news|breaking|headlines|samachar|taza|taaza|taji|updates/.test(t))
                 return 'news';
             // Wikipedia / Facts
             if (/kaun hai|kaun hain|kya hai|kya hain|who is|what is|wikipedia|history|itihas|jankari|batao|define|meaning|matlab|explain|jankaari|detail/.test(t))
                 return 'wiki';
             // Time / Date
-            if (/time|samay|abhi kitne baje|kitne baje|aaj kya date|aaj ki date|date today|current time/.test(t))
+            if (/time|samay|abhi kitne baje|kitne baje|aaj kya date|aaj ki date|date today|current time|tarikh|taarikh|din/.test(t))
                 return 'datetime';
             return 'general';
         }
 
         function extractCity(text) {
-            // Try to extract city name from weather queries
-            const patterns = [
-                /(?:mausam|weather|temperature)\s+(?:of|in|at|ka|ki|ke)?\s*([a-zA-Z\u0900-\u097F\s]{2,25})/i,
-                /([a-zA-Z\u0900-\u097F]{3,20})\s+(?:mausam|weather|temperature|ka mausam)/i,
-                /aaj\s+([a-zA-Z\u0900-\u097F]{3,20})\s+(?:mein|me)/i
-            ];
-            for (const p of patterns) {
-                const m = text.match(p);
-                if (m && m[1]) {
-                    const city = m[1].trim().replace(/\s+/g, '+');
-                    if (city.length > 1) return city;
-                }
+            let cleaned = text.toLowerCase()
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            const words = cleaned.split(" ");
+            const stopWords = new Set([
+                "weather", "mausam", "temperature", "temp", "tapman", "forecast", "report", "info", "information",
+                "aaj", "today", "now", "current", "live", "kya", "hai", "hain", "kaisa", "kaisa-hai", "kaisa_hai",
+                "kaisi", "kaise", "batao", "bata", "de", "do", "dijiye", "show", "get", "find", "please", "plz",
+                "in", "me", "mein", "at", "of", "for", "the", "ko", "se", "ka", "ki", "ke", "how", "is", "what",
+                "about", "around", "here", "there", "aajka", "aaj-ka", "aaj_ka", "hoga", "hogi", "kab", "right",
+                "day", "night", "tonight", "tomorrow", "yesterday", "barish", "baarish", "rain", "rainy",
+                "snow", "wind", "cloudy", "sunny", "monsoon", "clouds"
+            ]);
+
+            const filteredWords = words.filter(w => w && !stopWords.has(w));
+            if (filteredWords.length > 0) {
+                return filteredWords.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("+");
             }
-            return 'Delhi'; // default
+            return "Delhi";
+        }
+
+        function extractNewsQuery(text) {
+            let cleaned = text.toLowerCase()
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            const words = cleaned.split(" ");
+            const stopWords = new Set([
+                "news", "khabar", "khabaren", "khabrein", "latest", "breaking", "headlines", "samachar",
+                "taza", "taaza", "taji", "batao", "bata", "de", "do", "dijiye", "show", "get", "find",
+                "please", "plz", "in", "me", "mein", "at", "of", "for", "the", "ko", "se", "ka", "ki", "ke",
+                "how", "is", "what", "about", "around", "here", "there", "today", "aaj", "aajki", "aaj-ki",
+                "aaj_ki", "todays", "today's", "ki-khabar", "ki_khabar", "ki-khabren", "ki_khabren", "updates"
+            ]);
+
+            const filteredWords = words.filter(w => w && !stopWords.has(w));
+            if (filteredWords.length > 0) {
+                return filteredWords.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("+");
+            }
+            return "top-headlines";
         }
 
         async function fetchWeatherData(text) {
@@ -3425,16 +3456,14 @@ ${forecast}
         async function fetchNewsData(text) {
             try {
                 // Use Google News RSS via rss2json (free, CORS-friendly)
-                const t = text.toLowerCase();
-                let topic = 'top-headlines';
-                if (/cricket|ipl|sport|khel/.test(t)) topic = 'sports';
-                else if (/tech|technology|ai|artificial|phone|mobile/.test(t)) topic = 'technology';
-                else if (/business|market|share|stock|economy/.test(t)) topic = 'business';
-                else if (/bollywood|film|movie|cinema|entertainment/.test(t)) topic = 'entertainment';
-                else if (/health|sehat|dawai|hospital|corona|covid/.test(t)) topic = 'health';
-                else if (/politics|election|sarkar|government|neta/.test(t)) topic = 'politics';
+                const query = extractNewsQuery(text);
+                let rssUrl;
+                if (query === 'top-headlines') {
+                    rssUrl = encodeURIComponent('https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en');
+                } else {
+                    rssUrl = encodeURIComponent(`https://news.google.com/rss/search?q=${query}&hl=en-IN&gl=IN&ceid=IN:en`);
+                }
 
-                const rssUrl = encodeURIComponent(`https://news.google.com/rss/search?q=${topic}&hl=en-IN&gl=IN&ceid=IN:en`);
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}&count=8`;
                 const res = await fetch(apiUrl);
                 if (!res.ok) return null;
@@ -3446,7 +3475,8 @@ ${forecast}
                     return `${i+1}. **${item.title}**\n   📰 ${item.author || 'Google News'} | 🕒 ${date}`;
                 }).join('\n\n');
 
-                return `📰 **Latest News** (Live from Google News - ${new Date().toLocaleString('en-IN')})\n\n${headlines}\n\n*(Real-time headlines)*`;
+                const queryTitle = query === 'top-headlines' ? 'Top Headlines' : `${query.replace(/\+/g, ' ')} News`;
+                return `📰 **Latest News: ${queryTitle}** (Live from Google News - ${new Date().toLocaleString('en-IN')})\n\n${headlines}\n\n*(Real-time headlines)*`;
             } catch (e) {
                 console.warn('News fetch error:', e);
                 return null;
@@ -3502,7 +3532,7 @@ ${forecast}
             const apiKey = GEMINI_API_KEY;
             if (!apiKey) throw new Error("Gemini API Key configuration is missing.");
 
-            const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
+            const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash"];
             let lastError = null;
 
             for (const model of models) {
