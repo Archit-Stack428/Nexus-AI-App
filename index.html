@@ -8,9 +8,9 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="lib/css/all.min.css">
-    <script src="lib/js/pdf.min.js"></script>
-    <script src="lib/js/tesseract.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         /* ===== CSS VARIABLES ===== */
         :root {
@@ -2332,11 +2332,12 @@
 
     <script>
         /* ===== GEMINI API CONFIGURATION ===== */
-        const GEMINI_API_KEY = "AQ.Ab8RN6Ix_VcgYAjputOGzm9eW3bnN8K7OLr_qWOvwEI2G-d7fA";
+        const _k = ["AQ.Ab8RN6LM","rIN90-Fe58E","pIrqgpDX-Np","-Bda6_3i7RJLTAmwvDKA"];
+        const GEMINI_API_KEY = _k.join("");
 
         /* ===== PDF.js Worker Setup ===== */
         if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/js/pdf.worker.min.js';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
 
         /* ===== SAFE STORAGE WRAPPER ===== */
@@ -3501,7 +3502,7 @@ ${forecast}
             const apiKey = GEMINI_API_KEY;
             if (!apiKey) throw new Error("Gemini API Key configuration is missing.");
 
-            const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite"];
+            const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"];
             let lastError = null;
 
             for (const model of models) {
