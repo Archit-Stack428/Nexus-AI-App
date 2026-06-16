@@ -3502,7 +3502,7 @@ ${forecast}
             const apiKey = GEMINI_API_KEY;
             if (!apiKey) throw new Error("Gemini API Key configuration is missing.");
 
-            const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"];
+            const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
             let lastError = null;
 
             for (const model of models) {
